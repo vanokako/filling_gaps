@@ -13,8 +13,6 @@ if __name__ == "__main__":
     max = data.max()
     print(data[10][0], data[25][0])
     data = (data-min)/(max-min)
-    for i in range(5):
-        print(2)
     #print(data)
 
 
