@@ -3,6 +3,7 @@ import pandas as pd
 def get_data(filename):
     data = pd.read_csv(filename, delimiter=',')
     data = np.array(data.drop(data.columns[0],axis=1))
+    print(data)
     return data
 
 
@@ -33,6 +34,6 @@ def make_missing_value(X, del_fraction=0.05, del_fraction_column=1.0, del_fracti
     new_X = np.array(X)
     # new_X[25][0] = np.nan
     new_X[delete_mask] = np.nan
-    X_without_gaps = new_X[:, ~np.isnan(new_X).any(axis=0)]
-    gaps = new_X[:, np.isnan(new_X).any(axis=0)]
+    X_without_gaps = new_X[~np.isnan(new_X).any(axis=1)]
+    gaps = new_X[np.isnan(new_X).any(axis=1)]
     return new_X, X_without_gaps, gaps
