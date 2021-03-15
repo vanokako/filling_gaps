@@ -3,7 +3,7 @@ import numpy as np
 import neural_network as nn
 from sklearn.preprocessing import MinMaxScaler
 if __name__ == "__main__":
-    data = pp.get_data('barro.csv')
+    data = pp.get_data('Boston.csv')
     # st_el = [float(i) for i in range(1, 50)]
     # nd_el = [float(i+1) for i in range(1, 50)]
     # pred_el = [float(st_el[i]+nd_el[i]*5) for i in range(49)]
