@@ -56,11 +56,11 @@ def build_model(input_shape, output_length):
                   metrics=['mse'])
     return model
 
-def make_prediction(data, gaps, max, min):
+def make_prediction(data, gaps):
     batch_size = 4
     x, y, predict_data = prepare_for_traning(data, gaps)
     x_train, x_test, y_train, y_test = train_test_split(x,y, test_size = 0.2)
-
+    predict_data = np.reshape(predict_data, (1, predict_data.shape[0]))
     print(x_test.shape, y_test.shape)
     print(x_train.shape, y_train.shape)
     checkpoint_filepath = './checkpoint'
@@ -73,22 +73,18 @@ def make_prediction(data, gaps, max, min):
 
 
     input_shape = x_train.shape[1]
-    output_length = data.shape[1]-len(predict_data)
+    output_length = np.isnan(gaps).sum()
     model = build_model(input_shape, output_length)
     history = model.fit(x_train, y_train,
-                        epochs=1000,
+                        epochs=500,
                         validation_data=(x_test, y_test),
-                        verbose = 1,
+                        verbose = 0,
                         batch_size=batch_size,
                         callbacks=[best_model]
                         )
     model.load_weights(checkpoint_filepath)
-    print(history.history['val_loss'])
-    a = model.predict(x_test)
-    print("++++++++++++++TEST++++++++++")
-    print(y_test[:5]*(max-min)+min)
-    print("++++++++++++++PRREDICT++++++++++")
-    print(a[:5]*(max-min)+min)
+    prediction = model.predict(predict_data)
+    return prediction.ravel()
 
     # print(y_test)
     # print(a)
