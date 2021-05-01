@@ -2,9 +2,11 @@ import tensorflow as tf
 from tensorflow.keras.layers import Dense
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dropout
-from tensorflow.keras.layers import LSTM
+from rbflayer import RBFLayer, InitCentersRandom
 from sklearn.model_selection import train_test_split
+from tensorflow.keras.optimizers import RMSprop
 import numpy as np
+
 
 
 def build_model(input_shape, output_length):
@@ -38,56 +40,80 @@ def build_model(input_shape, output_length):
     tf.keras.layers.Dropout(0.05),
     tf.keras.layers.Dense(units=output_length),
 ],name="Larger_network",)
-    # model = Sequential()
-    # model.add(Dense(16, input_shape = (input_shape,),activation='relu', use_bias=False))
-    # model.add(Dropout(0.3))
-    # model.add(Dense(1, activation='relu'))
-#    model.compile(loss='mae', optimizer='adam')
-    #ts_inputs = tf.keras.Input(shape=(input_shape, ))
-#    x = LSTM(units=10, return_sequences = False, )
-#    x = Dropout(0.2)(x)
-#    outputs = Dense(1, activation='linear')(x)
-#    model = tf.keras.Model(inputs=ts_inputs, outputs=outputs)
-#    model = Sequential()
-#    model.add(LSTM(units=10, return_sequences = False, input_shape=(input_shape, 1)))
-#    model.add(Dense(1, activation='linear'))
     model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.005),
                   loss=['mae'],
                   metrics=['mse'])
+
+    return model
+
+def build_model_rbf(input_shape, output_length, X):
+    model = Sequential()
+    rbflayer = RBFLayer(10,
+                        initializer=InitCentersRandom(X),
+                        betas=2.0,
+                        input_shape=(input_shape,))
+    model.add(rbflayer)
+    model.add(Dense(256))
+    model.add(tf.keras.layers.LeakyReLU())
+    model.add(Dropout(0.01))
+    model.add(Dense(output_length))
+    model.compile(loss='mae',
+                  metrics=['mse'],
+                  optimizer=RMSprop())
     return model
 
 def make_prediction(data, gaps):
-    batch_size = 4
+
     x, y, predict_data = prepare_for_traning(data, gaps)
     x_train, x_test, y_train, y_test = train_test_split(x,y, test_size = 0.2)
+    batch_size = 4 if x_train.shape[0] // 16 <= 4 else x_train.shape[0] // 16
     predict_data = np.reshape(predict_data, (1, predict_data.shape[0]))
     print(x_test.shape, y_test.shape)
     print(x_train.shape, y_train.shape)
-    checkpoint_filepath = './checkpoint'
-    best_model = tf.keras.callbacks.ModelCheckpoint(
-    filepath=checkpoint_filepath,
-    save_weights_only=True,
-    monitor='val_loss',
-    mode='min',
-    save_best_only=True)
 
 
+    best_model=tf.keras.callbacks.ModelCheckpoint(
+                                    filepath='./checkpoint',
+                                    save_weights_only=True,
+                                    monitor='val_loss',
+                                    mode='min',
+                                    save_best_only=True)
+    best_model_1 =tf.keras.callbacks.ModelCheckpoint(
+                                    filepath='./checkpoint1',
+                                    save_weights_only=True,
+                                    monitor='val_loss',
+                                    mode='min',
+                                    save_best_only=True)
     input_shape = x_train.shape[1]
     output_length = np.isnan(gaps).sum()
     model = build_model(input_shape, output_length)
-    history = model.fit(x_train, y_train,
-                        epochs=500,
+    model_rbf = build_model_rbf(input_shape, output_length, x)
+    history_rbf = model_rbf.fit(x_train, y_train,
+                        epochs=300,
                         validation_data=(x_test, y_test),
                         verbose = 0,
                         batch_size=batch_size,
                         callbacks=[best_model]
                         )
-    model.load_weights(checkpoint_filepath)
-    prediction = model.predict(predict_data)
-    return prediction.ravel()
 
-    # print(y_test)
-    # print(a)
+    model_rbf.load_weights('./checkpoint')
+    history = model.fit(x_train, y_train,
+                        epochs=300,
+                        validation_data=(x_test, y_test),
+                        verbose = 0,
+                        batch_size=batch_size,
+                        callbacks=[best_model_1]
+                        )
+    model.load_weights('./checkpoint1')
+    results = model.evaluate(x_test, y_test, batch_size=128)
+    print("test loss, test acc:", results)
+    results_rbf = model_rbf.evaluate(x_test, y_test, batch_size=128)
+    print("test loss, test acc RBF:", results_rbf)
+    prediction = model.predict(predict_data)
+    prediction_rbf = model_rbf.predict(predict_data)
+
+    return [prediction.ravel(), prediction_rbf.ravel()]
+
 
 def prepare_for_traning(data, gaps):
     x = []
