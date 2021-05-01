@@ -1,10 +1,17 @@
 import numpy as np
 import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
 def get_data(filename):
     data = pd.read_csv(filename, delimiter=',')
-    data = np.array(data.drop(data.columns[0],axis=1))
-    print(data)
-    return data
+    not_numeric = data.applymap(lambda x: isinstance(x, str)).all(0)
+    for i, j in not_numeric:
+        if j == True:
+            data = data.drop(data.columns[i],axis=1)
+    correlation_matrix = data.corr().round(2)
+    ax = sns.heatmap(data=correlation_matrix, annot=True)
+    plt.show()
+    return np.array(data)
 
 
 def make_missing_value(X, del_fraction=0.05, del_fraction_column=1.0, del_fraction_row=1.0, del_columns=None):
@@ -32,8 +39,11 @@ def make_missing_value(X, del_fraction=0.05, del_fraction_column=1.0, del_fracti
     delete_mask = np.array(delete_mask == 3, dtype=bool)
 
     new_X = np.array(X)
-    # new_X[25][0] = np.nan
+    print('X_shape')
+    print(new_X.shape)
     new_X[delete_mask] = np.nan
     X_without_gaps = new_X[~np.isnan(new_X).any(axis=1)]
+    print('After_deleting')
+    print(X_without_gaps.shape)
     gaps = new_X[np.isnan(new_X).any(axis=1)]
     return new_X, X_without_gaps, gaps
