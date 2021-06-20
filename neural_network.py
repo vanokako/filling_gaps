@@ -51,7 +51,7 @@ def build_model_rbf(input_shape, output_length, X):
     rbflayer = RBFLayer(input_shape,
                         initializer=InitCentersRandom(X),
                         betas=3.0,
-                        input_shape=(input_shape,))
+                        input_shape=(1,))
     model.add(rbflayer)
     model.add(Dense(256))
     model.add(tf.keras.layers.LeakyReLU())
